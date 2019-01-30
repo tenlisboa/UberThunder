@@ -1,19 +1,36 @@
-import React, { Component } from 'react';
-import MapView from 'react-native-maps'
+import React, { Component, Fragment } from 'react';
+import { View, Text } from 'react-native';
+import MapView, { Marker } from 'react-native-maps';
+import { getPixelSize } from '../../Utils';
+import Geocoder from 'react-native-geocoding';
 
-import { View } from 'react-native';
+import Search from '../Search';
+import Directions from '../Directions';
 
-// import styles from './styles';
+import markerImage from '../../assets/marker.png';
+
+import { LocationBox, LocationText, LocationTimeBox, LocationTimeText, LocationTimeTextSmall } from './styles';
+
+Geocoder.init('AIzaSyCl8kumgyjOSkegOccIRXfCrfDgYb4ibDI');
 
 export default class Map extends Component {
   state = {
     region: null,
+    destination: null,
+    duration: null,
+    location: null,
   }
   
   async componentDidMount() {
     navigator.geolocation.getCurrentPosition(
       async ({ coords: { latitude, longitude } }) => {
+
+        const response = await Geocoder.from({ latitude, longitude });
+        const address = response.results[0].formatted_address;
+        const location = address.split(',')[0];
+
         this.setState({
+          location,
           region: { latitude, longitude, latitudeDelta: 0.0143, longitudeDelta: 0.0134,}
         })
       },
@@ -26,8 +43,20 @@ export default class Map extends Component {
     )
   }
 
+  handleLocationSelected = (data, { geometry }) => {
+    const { location: { lat: latitude, lng: longitude } } = geometry
+
+    this.setState({
+      destination: {
+        latitude,
+        longitude,
+        title: data.structured_formatting.main_text,
+      }
+    })
+  }
+
   render() {
-    const { region } = this.state
+    const { region, destination, duration, location } = this.state
     return (
       <View style={{ flex: 1 }}>
         <MapView
@@ -35,7 +64,55 @@ export default class Map extends Component {
           region={ region }
           showsUserLocation
           loadingEnabled
-        />
+          ref={el => this.mapView = el}
+        >
+          { destination && (
+            <Fragment>
+              <Directions 
+                origin={region}
+                destination={destination}
+                onReady={result => {
+
+                  this.setState({ duration: Math.floor(result.duration) })
+
+                  this.mapView.fitToCoordinates(result.coordinates, {
+                    edgePadding: {
+                      top: getPixelSize(50),
+                      bottom: getPixelSize(50),
+                      left: getPixelSize(50),
+                      right: getPixelSize(50),
+                    }
+                  })
+                }}
+              />
+
+              <Marker
+                coordinate={destination}
+                anchor={{ x: 0, y: 0 }}
+                image={markerImage}
+              >
+                <LocationBox>
+                  <LocationText>{destination.title}</LocationText>
+                </LocationBox>
+              </Marker>
+
+              <Marker
+                coordinate={region}
+                anchor={{ x: 0, y: 0 }}
+              >
+                <LocationBox>
+                  <LocationTimeBox>
+                    <LocationTimeText>{duration}</LocationTimeText>
+                    <LocationTimeTextSmall>MIN</LocationTimeTextSmall>
+                  </LocationTimeBox>
+                  <LocationText>{location}</LocationText>
+                </LocationBox>
+              </Marker>
+            </Fragment>
+          ) }
+        </MapView>
+
+        <Search onLocationSelected={this.handleLocationSelected} />
       </View>
     );
   }
