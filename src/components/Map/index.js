@@ -1,17 +1,19 @@
 import React, { Component, Fragment } from 'react';
-import { View, Text } from 'react-native';
+import { View, Image } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import { getPixelSize } from '../../Utils';
 import Geocoder from 'react-native-geocoding';
 
 import Search from '../Search';
 import Directions from '../Directions';
+import Details from '../Details';
 
 import markerImage from '../../assets/marker.png';
+import backImage from '../../assets/back.png';
 
-import { LocationBox, LocationText, LocationTimeBox, LocationTimeText, LocationTimeTextSmall } from './styles';
+import { LocationBox, LocationText, LocationTimeBox, LocationTimeText, LocationTimeTextSmall, Back } from './styles';
 
-Geocoder.init('AIzaSyCl8kumgyjOSkegOccIRXfCrfDgYb4ibDI');
+Geocoder.init('API_KEY_EXAMPLE');
 
 export default class Map extends Component {
   state = {
@@ -30,8 +32,8 @@ export default class Map extends Component {
         const location = address.split(',')[0];
 
         this.setState({
+          region: { latitude, longitude, latitudeDelta: 0.0143, longitudeDelta: 0.0134,},
           location,
-          region: { latitude, longitude, latitudeDelta: 0.0143, longitudeDelta: 0.0134,}
         })
       },
       () => {},
@@ -53,6 +55,10 @@ export default class Map extends Component {
         title: data.structured_formatting.main_text,
       }
     })
+  }
+
+  handleBack = () => {
+    this.setState({ destination: null })
   }
 
   render() {
@@ -80,7 +86,7 @@ export default class Map extends Component {
                       top: getPixelSize(50),
                       bottom: getPixelSize(50),
                       left: getPixelSize(50),
-                      right: getPixelSize(50),
+                      right: getPixelSize(350),
                     }
                   })
                 }}
@@ -112,7 +118,14 @@ export default class Map extends Component {
           ) }
         </MapView>
 
-        <Search onLocationSelected={this.handleLocationSelected} />
+        { destination ? (
+          <Fragment>
+            <Back onPress={this.handleBack}>
+              <Image source={backImage} />
+            </Back>
+            <Details />
+          </Fragment>
+        ) : <Search onLocationSelected={this.handleLocationSelected} /> }
       </View>
     );
   }
